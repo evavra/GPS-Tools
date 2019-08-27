@@ -1,3 +1,4 @@
+
 import numpy as np
 import collections
 import datetime as dt
@@ -21,8 +22,6 @@ def driver():
 def readUNR(filename, data_format):
 
     if data_format == 'xyz':
-
-        # RDOM 98AUG14 1998.6174 -0.244347624362904E+07 -0.442672558603183E+07  0.387861458785039E+07 0.115015240663353E-02 0.186956212545556E-02 0.153421727186364E-02  0.795294219540590E+00 -0.817631106526538E+00 -0.735794538541737E+00   0.0791
 
         xyz = collections.namedtuple('TimeS', ['name', 'coords', 'dt', 'dN', 'dE', 'dU'])
 
