@@ -9,14 +9,17 @@ def driver():
     filename = 'RDOM.IGS08.tenv3.txt'
     data_format = 'env'
     component = 'N'
-    start = '20141101'
+    start = '20141108'
     end = '20190901'
-    dates = [dt.datetime.strptime(start, '%Y%m%d'), dt.datetime.strptime(end, '%Y%m%d')]
+    theta = 31
+
+    start_end = [dt.datetime.strptime(start, '%Y%m%d'), dt.datetime.strptime(end, '%Y%m%d')]
 
     gps_data = readUNR(filename, data_format)
-    stationTimeSeries(gps_data, component, dates)
+    los_gps_data = proj2LOS(gps_data.up, theta)
+    stationTimeSeries(gps_data.dates, los_gps_data, component, start_end)
 
-# ------------------------- INPUT -------------------------
+# ------------------------- INPUT --------xw-----------------
 
 
 def readUNR(filename, data_format):
@@ -96,25 +99,40 @@ def readUNR(filename, data_format):
 
 # ------------------------- OUTPUT -------------------------
 
-def stationTimeSeries(gps_data, component, dates):
+def proj2LOS(gps_data, theta):
+
+    gps_los = []
+
+    for gps_z in gps_data:
+        gps_los.append(gps_z / np.sin(theta * np.pi / 180))
+        # print(str(gps_z) + ' -> ' + str(gps_los[-1]))
+        # print(gps_z / np.sin(theta * np.pi / 180))
+
+    return gps_los
+
+
+def stationTimeSeries(dates, gps_data, component, start_end):
 
     # Get displacements
     plot_displacements = []
 
     # First find start date
     z_init = 999
-    search_date = dates[0]
+    search_date = start_end[0]
 
     while z_init == 999:
         print('Looking for ' + search_date.strftime('%Y-%m-%d'))
-        for i in range(len(gps_data.dates)):
-            if search_date.strftime('%Y%m%d') == gps_data.dates[i].strftime('%Y%m%d'):
-                z_init = gps_data.up[i]
-                plot_dates = gps_data.dates[i:]
-                plot_data = gps_data.up[i:]
+        for i in range(len(dates)):
+            if search_date.strftime('%Y%m%d') == dates[i].strftime('%Y%m%d'):
+                plot_dates = dates[i:]
+                print('GPS time series start: ' + str(plot_dates[0]))
+                plot_data = gps_data[i:]
+                z_init = gps_data[i]
+                break
 
         search_date = search_date + dt.timedelta(days=1)
 
+    search_date = search_date - dt.timedelta(days=1)
     print("Initial value: " + str(z_init))
 
     for value in plot_data:
@@ -123,11 +141,11 @@ def stationTimeSeries(gps_data, component, dates):
     fig = plt.figure(figsize=(14, 8))
     ax1 = plt.subplot(111)
     plt.grid()
-    plt.scatter(plot_dates, plot_displacements, marker='.', zorder=99)
+    ax1.scatter(plot_dates, plot_displacements, marker='.', zorder=99)
 
     # ax1.set_aspect(30)
-    ax1.set_xlim(dates[0], dates[1])
-    # ax1.set_ylim(min(displacements) - 0.005, max(displacements) + 0.005)
+    ax1.set_xlim(start_end[0], start_end[1])
+    ax1.set_ylim(min(plot_displacements) - 0.005, max(plot_displacements) + 0.005)
 
     plt.xlabel('Date')
     plt.ylabel('Vertical displacement (m)')
