@@ -20,8 +20,8 @@ def driver():
 
     # CALCULATE BASELINES
     # Load data
-    station1 = readUNR('GPS_data_20190829/RDOM.NA12.tenv3', 'env')
-    station2 = readUNR('GPS_data_20190829/CA99.NA12.tenv3', 'env')
+    station1 = readUNR('GPS_data_20190830/RDOM.NA12.tenv3', 'env')
+    station2 = readUNR('GPS_data_20190830/CA99.NA12.tenv3', 'env')
 
     start = '20141101'
     end = '20190803'
@@ -116,31 +116,42 @@ def calcBaseline(station1, station2, start, end):
     # assumes input data is formatted as described below (Nevada Geodetic
     # Laboratory convention), with the addition of a serial data number column.
 
-     # INPUT:
-     #   station1  - Time series data for first GPS station (dataGPS tuple)
-     #   station2  - Time series data for second GPS station (dataGPS tuple)
-     #   start - Start date of observation period (YYYYMMDD string)
-     #   end   - End date of observation period (YYYYMMDD string)
+    # INPUT:
+    #   station1  - Time series data for first GPS station (dataGPS tuple)
+    #   station2  - Time series data for second GPS station (dataGPS tuple)
+    #   start - Start date of observation period (YYYYMMDD string)
+    #   end   - End date of observation period (YYYYMMDD string)
 
-     # OUTPUT:
-     #   baselineData - three-column cell array containing dates where both
-     #   stations have data, baseline lengths, and
+    # OUTPUT:
+    #   baselineData - three-column cell array containing dates where both
+    #   stations have data, baseline lengths, and
 
+    # Make namedTuple for GPS data
     enz = collections.namedtuple('dataGPS', ['station_name', 'dates', 'yyyy_yyyy', 'MJD', 'week', 'day', 'reflon', 'e0', 'east', 'n0', 'north', 'u0', 'up', 'ant', 'sig_e', 'sig_n', 'sig_u', 'corr_en', 'corr_eu', 'corr_nu'])
 
     # Find number of days in date range
     start_dt = dt.datetime.strptime(start, '%Y%m%d')
     end_dt = dt.datetime.strptime(end, '%Y%m%d')
-    numDays = (end_dt - start_dt).days
+    numDays = (end_dt - start_dt).days + 1
+
+    print()
+    print('Total of ' + str(numDays) + ' days between ' + start_dt.strftime('%Y%m%d') + ' and ' + end_dt.strftime('%Y%m%d'))
+    
 
     # Create list of each day in range
     days_in_ts = [start_dt + dt.timedelta(days=x) for x in range(numDays)]
-
-    # Find data points in selected date range.
+    print()
+    print('Making list of dates between ' + days_in_ts[0].strftime('%Y%m%d') + ' and ' + days_in_ts[-1].strftime('%Y%m%d'))
+    
+    # -------------------------- STEP 1 --------------------------
+    # Find data points in selected date range for each station 
+    # First intiate empty lists to go into GPS tuple
     station_name = []; dates = []; yyyy_yyyy = []; MJD = []; week = []; day = []; reflon = []; e0 = []; east = []; n0 = []; north = []; u0 = []; up = []; ant = []; sig_e = []; sig_n = []; sig_u = []; corr_en = []; corr_eu = []; corr_nu = []
 
+    print()
     print(station1.station_name[0] + ' has ' + str(len(station1.station_name)) + ' data points between ' + min(station1.dates).strftime('%Y%m%d') + ' and ' + max(station1.dates).strftime('%Y%m%d'))
 
+    # Add data points if they fall into specified date range
     for i in range(len(station1.dates)):
         date_str = station1.dates[i].strftime('%Y%m%d')
         if date_str >= start and date_str <= end:
@@ -165,15 +176,42 @@ def calcBaseline(station1, station2, start, end):
             corr_eu.append(station1.corr_eu[i])
             corr_nu.append(station1.corr_nu[i])
 
+    # Create new data tuple for selected date range
     clipped1 = enz(station_name=station_name, dates=dates, yyyy_yyyy=yyyy_yyyy, MJD=MJD, week=week, day=day, reflon=reflon, e0=e0, east=east, n0=n0, north=north, u0=u0, up=up, ant=ant, sig_e=sig_e, sig_n=sig_n, sig_u=sig_u, corr_en=corr_en, corr_eu=corr_eu, corr_nu=corr_nu)
 
-    print(clipped1.station_name[0] + ' has ' + str(len(clipped1.station_name)) + ' data points between ' + start + ' and ' + end)
+    print(clipped1.station_name[0] + ' has ' + str(len(clipped1.station_name)) + ' data points between ' + clipped1.dates[0].strftime('%Y%m%d') + ' and ' + clipped1.dates[-1].strftime('%Y%m%d'))
 
-    # Reset temp lists for second station
+    print()
+
+    for i in range(len(clipped1.dates)):
+        print(station_name[i] + ' ' + dates[i].strftime('%Y%m%d')
+             + ' ' + str(yyyy_yyyy[i])
+             + ' ' + str(MJD[i])
+             + ' ' + str(week[i])
+             + ' ' + str(day[i])
+             + ' ' + str(reflon[i])
+             + ' ' + str(e0[i])
+             + ' ' + str(east[i])
+             + ' ' + str(n0[i])
+             + ' ' + str(north[i])
+             + ' ' + str(u0[i])
+             + ' ' + str(up[i])
+             + ' ' + str(ant[i])
+             + ' ' + str(sig_e[i])
+             + ' ' + str(sig_n[i])
+             + ' ' + str(sig_u[i])
+             + ' ' + str(corr_en[i])
+             + ' ' + str(corr_eu[i])
+             + ' ' + str(corr_nu[i]))
+
+
+    # Reset temporary lists for second station
     station_name = []; dates = []; yyyy_yyyy = []; MJD = []; week = []; day = []; reflon = []; e0 = []; east = []; n0 = []; north = []; u0 = []; up = []; ant = []; sig_e = []; sig_n = []; sig_u = []; corr_en = []; corr_eu = []; corr_nu = []
 
+    print()
     print(station2.station_name[0] + ' has ' + str(len(station2.station_name)) + ' data points between ' + min(station2.dates).strftime('%Y%m%d') + ' and ' + max(station2.dates).strftime('%Y%m%d'))
 
+    # Add data points if they fall into specified date range
     for i in range(len(station2.dates)):
         date_str = station2.dates[i].strftime('%Y%m%d')
         if date_str >= start and date_str <= end:
@@ -198,9 +236,34 @@ def calcBaseline(station1, station2, start, end):
             corr_eu.append(station2.corr_eu[i])
             corr_nu.append(station2.corr_nu[i])
 
+    # Create new data tuple for selected date range
     clipped2 = enz(station_name=station_name, dates=dates, yyyy_yyyy=yyyy_yyyy, MJD=MJD, week=week, day=day, reflon=reflon, e0=e0, east=east, n0=n0, north=north, u0=u0, up=up, ant=ant, sig_e=sig_e, sig_n=sig_n, sig_u=sig_u, corr_en=corr_en, corr_eu=corr_eu, corr_nu=corr_nu)
 
-    print(clipped2.station_name[0] + ' has ' + str(len(clipped2.station_name)) + ' data points between ' + start + ' and ' + end)
+    print(clipped2.station_name[0] + ' has ' + str(len(clipped2.station_name)) + ' data points between ' + clipped2.dates[0].strftime('%Y%m%d') + ' and ' + clipped2.dates[-1].strftime('%Y%m%d'))
+
+    for i in range(len(clipped2.dates)):
+        print(station_name[i] + ' ' + dates[i].strftime('%Y%m%d')
+             + ' ' + str(yyyy_yyyy[i])
+             + ' ' + str(MJD[i])
+             + ' ' + str(week[i])
+             + ' ' + str(day[i])
+             + ' ' + str(reflon[i])
+             + ' ' + str(e0[i])
+             + ' ' + str(east[i])
+             + ' ' + str(n0[i])
+             + ' ' + str(north[i])
+             + ' ' + str(u0[i])
+             + ' ' + str(up[i])
+             + ' ' + str(ant[i])
+             + ' ' + str(sig_e[i])
+             + ' ' + str(sig_n[i])
+             + ' ' + str(sig_u[i])
+             + ' ' + str(corr_en[i])
+             + ' ' + str(corr_eu[i])
+             + ' ' + str(corr_nu[i]))
+
+    # -------------------------- STEP 2 --------------------------
+    # Align both station datasets adding empty spacer lists for dates with no data
 
     # Set loop-independent index for GPS data arrays.
     j1 = 0
@@ -208,9 +271,9 @@ def calcBaseline(station1, station2, start, end):
     save_j1 = 0
     save_j2 = 0
 
-    testCount = 0
-
     # Initialize empty arrays for aligned data
+    station_name = []; dates = []; yyyy_yyyy = []; MJD = []; week = []; day = []; reflon = []; e0 = []; east = []; n0 = []; north = []; u0 = []; up = []; ant = []; sig_e = []; sig_n = []; sig_u = []; corr_en = []; corr_eu = []; corr_nu = []
+
     while len(corr_nu) < numDays:
         station_name.append([])
         dates.append([])
@@ -233,21 +296,22 @@ def calcBaseline(station1, station2, start, end):
         corr_eu.append([])
         corr_nu.append([])
 
-    print(len(corr_nu))
+    print()
+    print('Confirming length of empty lists is equal to number of days in date range: ' + str(len(reflon)) + ' = ' + str(numDays))
 
     # Align GPS data arrays to have indexing consistent with the selected date range. Days with no GPS data are left empty.
-    print('Length of GPS array: ' + str(len(clipped1.dates)))
+    print()
+    print('Number of data points from ' + clipped1.station_name[0] + ': ' + str(len(clipped1.yyyy_yyyy)))
 
     for i in range(len(days_in_ts)):
         station_name[i] = clipped1.station_name[0]
 
         while j1 < len(clipped1.dates):
             if days_in_ts[i].strftime('%Y%m%d') == clipped1.dates[j1].strftime('%Y%m%d'):
-                # print(date_ts.strftime('%Y%m%d') + '==' + clipped1.dates[j1].strftime('%Y%m%d'))
+                # print(days_in_ts[i].strftime('%Y%m%d') + ' == ' + clipped1.dates[j1].strftime('%Y%m%d'))
 
-                # print([i, j1])
                 # Add all the data to the new tuple
-                # print('Adding data for ' + clipped1.dates[j1].strftime('%Y%m%d'))
+                print('Adding data for ' + clipped1.dates[j1].strftime('%Y%m%d') + ' to [' + str(i) + '] ')
 
                 yyyy_yyyy[i] = clipped1.yyyy_yyyy[j1]
                 MJD[i] = clipped1.MJD[j1]
@@ -274,21 +338,50 @@ def calcBaseline(station1, station2, start, end):
                 # Move to next data point
                 j1 += 1
 
+                # print(up[:i])
+
                 break
 
-            else:
+            elif days_in_ts[i].strftime('%Y%m%d') != clipped1.dates[j1].strftime('%Y%m%d'):
                 # print('Checking next data point')
                 j1 += 1
 
+        # if up[i] == []:
+            # print(station_name[i] + ' has no data on ' + days_in_ts[i].strftime('%Y%m%d'))
+
+        if j1 == len(clipped1.dates):
+                yyyy_yyyy[i] = np.nan
+                MJD[i] = np.nan
+                week[i] = np.nan
+                day[i] = np.nan
+                reflon[i] = np.nan
+                e0[i] = np.nan
+                east[i] = np.nan
+                n0[i] = np.nan
+                north[i] = np.nan
+                u0[i] = np.nan
+                up[i] = np.nan
+                ant[i] = np.nan
+                sig_e[i] = np.nan
+                sig_n[i] = np.nan
+                sig_u[i] = np.nan
+                corr_en[i] = np.nan
+                corr_eu[i] = np.nan
+                corr_nu[i] = np.nan
+
+        # Start search for next date after last matched date
         j1 = save_j1
 
     aligned1 = enz(station_name=station_name, dates=days_in_ts, yyyy_yyyy=yyyy_yyyy, MJD=MJD, week=week, day=day, reflon=reflon, e0=e0, east=east, n0=n0, north=north, u0=u0, up=up, ant=ant, sig_e=sig_e, sig_n=sig_n, sig_u=sig_u, corr_en=corr_en, corr_eu=corr_eu, corr_nu=corr_nu)
 
 
     # Repeat for second station
+
     # Initialize empty arrays for aligned data
+    station_name = []; dates = []; yyyy_yyyy = []; MJD = []; week = []; day = []; reflon = []; e0 = []; east = []; n0 = []; north = []; u0 = []; up = []; ant = []; sig_e = []; sig_n = []; sig_u = []; corr_en = []; corr_eu = []; corr_nu = []
+
     while len(corr_nu) < numDays:
-        station_name.append([])
+        station_name.append(([]))
         dates.append([])
         yyyy_yyyy.append([])
         MJD.append([])
@@ -309,23 +402,20 @@ def calcBaseline(station1, station2, start, end):
         corr_eu.append([])
         corr_nu.append([])
 
-    print(len(corr_nu))
+    print()
+    print('Confirming length of empty lists is equal to number of days in date range: ' + str(len(reflon)) + ' = ' + str(numDays))
+    print()
+    print('Number of data points from ' + clipped2.station_name[0] + ': ' + str(len(clipped2.yyyy_yyyy)))
 
-    # Align GPS data arrays to have indexing consistent with the selected date range. Days with no GPS data are left empty.
-    print('Length of GPS array: ' + str(len(clipped2.dates)))
-    print(clipped2.dates)
     for i in range(len(days_in_ts)):
         station_name[i] = clipped2.station_name[0]
 
         while j2 < len(clipped2.dates):
-
-
             if days_in_ts[i].strftime('%Y%m%d') == clipped2.dates[j2].strftime('%Y%m%d'):
-                # print(date_ts.strftime('%Y%m%d') + '==' + clipped2.dates[j2].strftime('%Y%m%d'))
+                # print(days_in_ts[i].strftime('%Y%m%d') + ' == ' + clipped2.dates[j2].strftime('%Y%m%d'))
 
-                # print([i, j2])
                 # Add all the data to the new tuple
-                # print('Adding data for ' + clipped2.dates[j2].strftime('%Y%m%d'))
+                print('Adding data for ' + clipped2.dates[j2].strftime('%Y%m%d') + ' to [' + str(i) + '] ')
 
                 yyyy_yyyy[i] = clipped2.yyyy_yyyy[j2]
                 MJD[i] = clipped2.MJD[j2]
@@ -352,23 +442,52 @@ def calcBaseline(station1, station2, start, end):
                 # Move to next data point
                 j2 += 1
 
+                # print(up[:i])
+
                 break
 
-            else:
+            elif days_in_ts[i].strftime('%Y%m%d') != clipped2.dates[j2].strftime('%Y%m%d'):
                 # print('Checking next data point')
                 j2 += 1
 
+        # if up[i] == []:
+            # print(station_name[i] + ' has no data on ' + days_in_ts[i].strftime('%Y%m%d'))
+
+        if j2 == len(clipped2.dates):
+                yyyy_yyyy[i] = np.nan
+                MJD[i] = np.nan
+                week[i] = np.nan
+                day[i] = np.nan
+                reflon[i] = np.nan
+                e0[i] = np.nan
+                east[i] = np.nan
+                n0[i] = np.nan
+                north[i] = np.nan
+                u0[i] = np.nan
+                up[i] = np.nan
+                ant[i] = np.nan
+                sig_e[i] = np.nan
+                sig_n[i] = np.nan
+                sig_u[i] = np.nan
+                corr_en[i] = np.nan
+                corr_eu[i] = np.nan
+                corr_nu[i] = np.nan
+
+        # Start search for next date after last matched date
         j2 = save_j2
 
     aligned2 = enz(station_name=station_name, dates=days_in_ts, yyyy_yyyy=yyyy_yyyy, MJD=MJD, week=week, day=day, reflon=reflon, e0=e0, east=east, n0=n0, north=north, u0=u0, up=up, ant=ant, sig_e=sig_e, sig_n=sig_n, sig_u=sig_u, corr_en=corr_en, corr_eu=corr_eu, corr_nu=corr_nu)
+
+    # Display aligned arrays
+
 
     # Compute baseline lengths for given period.
 
     # Calculate the change in station baseline during the observation period. First, find the first data point
 
+
+
 # ------------------------- OUTPUT -------------------------
-
-
 def proj2LOS(gps_data, theta):
 
     gps_los = []

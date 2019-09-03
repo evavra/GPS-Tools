@@ -11,7 +11,7 @@ import collections
 def driver():
     stationInfo_stem = 'http://geodesy.unr.edu/NGLStationPages/'
     stationInfo = ['DataHoldings.txt']
-    stations = '/Users/ellisvavra/Desktop/Thesis/S1_Processing/InSAR_GPS/station.list'
+    stations = '/Users/ellisvavra/Thesis/gps/station.list'
     stem = 'http://geodesy.unr.edu/gps_timeseries/tenv3/NA12/'
     suffix = '.NA12.tenv3'
     outDir = 'GPS_data'
