@@ -1,4 +1,3 @@
-
 import numpy as np
 import collections
 import datetime as dt
@@ -20,14 +19,16 @@ def driver():
 
     # CALCULATE BASELINES
     # Load data
-    station1 = readUNR('GPS_data_20190830/RDOM.NA12.tenv3', 'env')
-    station2 = readUNR('GPS_data_20190830/CA99.NA12.tenv3', 'env')
+    station1 = readUNR('GPS_data_20190903/RDOM.NA12.tenv3', 'env')
+    station2 = readUNR('GPS_data_20190903/CA99.NA12.tenv3', 'env')
 
     start = '20141101'
     end = '20190803'
 
     # Compute baseline time series
-    calcBaseline(station1, station2, start, end)
+    baselineDates, lengthChange = calcBaseline(station1, station2, start, end)
+
+    plotBaseline(baselineDates, lengthChange)
 
 
 # ------------------------- CONFIGURE -------------------------
@@ -136,15 +137,15 @@ def calcBaseline(station1, station2, start, end):
 
     print()
     print('Total of ' + str(numDays) + ' days between ' + start_dt.strftime('%Y%m%d') + ' and ' + end_dt.strftime('%Y%m%d'))
-    
+
 
     # Create list of each day in range
     days_in_ts = [start_dt + dt.timedelta(days=x) for x in range(numDays)]
     print()
     print('Making list of dates between ' + days_in_ts[0].strftime('%Y%m%d') + ' and ' + days_in_ts[-1].strftime('%Y%m%d'))
-    
+
     # -------------------------- STEP 1 --------------------------
-    # Find data points in selected date range for each station 
+    # Find data points in selected date range for each station
     # First intiate empty lists to go into GPS tuple
     station_name = []; dates = []; yyyy_yyyy = []; MJD = []; week = []; day = []; reflon = []; e0 = []; east = []; n0 = []; north = []; u0 = []; up = []; ant = []; sig_e = []; sig_n = []; sig_u = []; corr_en = []; corr_eu = []; corr_nu = []
 
@@ -311,7 +312,7 @@ def calcBaseline(station1, station2, start, end):
                 # print(days_in_ts[i].strftime('%Y%m%d') + ' == ' + clipped1.dates[j1].strftime('%Y%m%d'))
 
                 # Add all the data to the new tuple
-                print('Adding data for ' + clipped1.dates[j1].strftime('%Y%m%d') + ' to [' + str(i) + '] ')
+                # print('Adding data for ' + clipped1.dates[j1].strftime('%Y%m%d') + ' to [' + str(i) + '] ')
 
                 yyyy_yyyy[i] = clipped1.yyyy_yyyy[j1]
                 MJD[i] = clipped1.MJD[j1]
@@ -415,7 +416,7 @@ def calcBaseline(station1, station2, start, end):
                 # print(days_in_ts[i].strftime('%Y%m%d') + ' == ' + clipped2.dates[j2].strftime('%Y%m%d'))
 
                 # Add all the data to the new tuple
-                print('Adding data for ' + clipped2.dates[j2].strftime('%Y%m%d') + ' to [' + str(i) + '] ')
+                # print('Adding data for ' + clipped2.dates[j2].strftime('%Y%m%d') + ' to [' + str(i) + '] ')
 
                 yyyy_yyyy[i] = clipped2.yyyy_yyyy[j2]
                 MJD[i] = clipped2.MJD[j2]
@@ -478,14 +479,33 @@ def calcBaseline(station1, station2, start, end):
 
     aligned2 = enz(station_name=station_name, dates=days_in_ts, yyyy_yyyy=yyyy_yyyy, MJD=MJD, week=week, day=day, reflon=reflon, e0=e0, east=east, n0=n0, north=north, u0=u0, up=up, ant=ant, sig_e=sig_e, sig_n=sig_n, sig_u=sig_u, corr_en=corr_en, corr_eu=corr_eu, corr_nu=corr_nu)
 
-    # Display aligned arrays
-
-
     # Compute baseline lengths for given period.
+    baselineData = []
+    for i in range(len(days_in_ts)):
+        # if aligned1.yyyy_yyyy[i] != np.nan and aligned2.yyyy_yyyy[i] != np.nan:
+        baselineData.append(np.sqrt((aligned1.north[i] - aligned2.north[i])**2 + (aligned1.east[i] - aligned2.east[i])**2  + (aligned1.up[i] - aligned2.up[i])**2))
+        print(aligned1.station_name[i] + '-' + aligned2.station_name[i] + ' baseline length: ' + str(baselineData[-1]) + ' m')
 
     # Calculate the change in station baseline during the observation period. First, find the first data point
+    initialDist = np.nan;
+    i = 0;
 
+    while initialDist == np.nan:
+        if baselineData[i] != np.nan:
+            initialDist = baselineData[i]
+        else:
+            i += 1
 
+    # Create new list for incremental baseline length changes
+    lengthChange = []
+    for i in range(len(days_in_ts)):
+        lengthChange.append(baselineData[i] - initialDist)
+        # print('Change in ' + print(aligned1.station_name[i] + '-' + aligned2.station_name[i] + ' baseline length from ' + days_in_ts[i].strftime('%Y%m%d') + ' to ' + days_in_ts[i + 1].strftime('%Y%m%d') + ': ' + str(lengthChange[-1]) + ' m')
+        # print(days_in_ts[i + 1].strftime('%Y%m%d')))
+
+    baselineDates = days_in_ts
+
+    return baselineDates, lengthChange
 
 # ------------------------- OUTPUT -------------------------
 def proj2LOS(gps_data, theta):
@@ -541,6 +561,22 @@ def stationTimeSeries(dates, gps_data, component, start_end):
 
     plt.show()
 
+
+def plotBaseline(baselineDates, lengthChange):
+
+
+    fig = plt.figure(figsize=(14, 8))
+    ax1 = plt.subplot(111)
+    plt.grid()
+    ax1.plot(baselineDates, lengthChange, marker='.', zorder=99)
+    ax1.set_aspect(30)
+    ax1.set_xlim(baselineDates[0], baselineDates[-1])
+    ax1.set_ylim(min(lengthChange) - 0.0005, max(lengthChange) + 0.0005)
+
+    plt.xlabel('Date')
+    plt.ylabel('Baseline length change (m)')
+
+    plt.show()
 
 if __name__ == "__main__":
     driver()
