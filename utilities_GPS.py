@@ -2,6 +2,7 @@ import numpy as np
 import collections
 import datetime as dt
 import matplotlib.pyplot as plt
+from getUNR import readStationList
 
 
 def driver():
@@ -17,18 +18,33 @@ def driver():
     # los_gps_data = proj2LOS(gps_data.up, theta)
     # stationTimeSeries(gps_data.dates, los_gps_data, component, start_end)
 
-    # CALCULATE BASELINES
+    # CALCULATE ONE BASELINE
     # Load data
-    station1 = readUNR('GPS_data_20190903/RDOM.NA12.tenv3', 'env')
-    station2 = readUNR('GPS_data_20190903/CA99.NA12.tenv3', 'env')
+    station1 = readUNR('GPS_data_20190829/RDOM.NA12.tenv3', 'env')
+    station2 = readUNR('GPS_data_20190829/CA99.NA12.tenv3', 'env')
 
     start = '20141101'
     end = '20190803'
 
-    # Compute baseline time series
-    baselineDates, lengthChange = calcBaseline(station1, station2, start, end)
+    outDir = 'BaselinePlots'
 
-    plotBaseline(baselineDates, lengthChange)
+    # Compute baseline time series
+    baselineDates, baselineChange = calcBaseline(station1, station2, start, end)
+    fileName = outDir + '/' + station1.station_name[0] + '-' + station2.station_name[0]
+    plotBaseline(baselineDates, baselineChange, fileName)
+
+
+    # CALCULATE MANY BASELINES
+
+    # Input:
+    ref = 'env'
+    stations = '/Users/ellisvavra/Desktop/Thesis/S1_Processing/InSAR_GPS/station.list'
+    dataDir = 'GPS_data_20190829'
+    suffix = '.NA12.tenv3'
+    outDir = 'BaselinePlots'
+
+    # Get list of GPS stations
+    stationList = readStationList(stations)
 
 
 # ------------------------- CONFIGURE -------------------------
@@ -138,7 +154,6 @@ def calcBaseline(station1, station2, start, end):
     print()
     print('Total of ' + str(numDays) + ' days between ' + start_dt.strftime('%Y%m%d') + ' and ' + end_dt.strftime('%Y%m%d'))
 
-
     # Create list of each day in range
     days_in_ts = [start_dt + dt.timedelta(days=x) for x in range(numDays)]
     print()
@@ -204,7 +219,6 @@ def calcBaseline(station1, station2, start, end):
              + ' ' + str(corr_en[i])
              + ' ' + str(corr_eu[i])
              + ' ' + str(corr_nu[i]))
-
 
     # Reset temporary lists for second station
     station_name = []; dates = []; yyyy_yyyy = []; MJD = []; week = []; day = []; reflon = []; e0 = []; east = []; n0 = []; north = []; u0 = []; up = []; ant = []; sig_e = []; sig_n = []; sig_u = []; corr_en = []; corr_eu = []; corr_nu = []
@@ -313,7 +327,7 @@ def calcBaseline(station1, station2, start, end):
 
                 # Add all the data to the new tuple
                 # print('Adding data for ' + clipped1.dates[j1].strftime('%Y%m%d') + ' to [' + str(i) + '] ')
-
+                dates[i] = clipped1.dates[j1]
                 yyyy_yyyy[i] = clipped1.yyyy_yyyy[j1]
                 MJD[i] = clipped1.MJD[j1]
                 week[i] = clipped1.week[j1]
@@ -351,6 +365,7 @@ def calcBaseline(station1, station2, start, end):
             # print(station_name[i] + ' has no data on ' + days_in_ts[i].strftime('%Y%m%d'))
 
         if j1 == len(clipped1.dates):
+                dates[i] = np.nan
                 yyyy_yyyy[i] = np.nan
                 MJD[i] = np.nan
                 week[i] = np.nan
@@ -373,11 +388,9 @@ def calcBaseline(station1, station2, start, end):
         # Start search for next date after last matched date
         j1 = save_j1
 
-    aligned1 = enz(station_name=station_name, dates=days_in_ts, yyyy_yyyy=yyyy_yyyy, MJD=MJD, week=week, day=day, reflon=reflon, e0=e0, east=east, n0=n0, north=north, u0=u0, up=up, ant=ant, sig_e=sig_e, sig_n=sig_n, sig_u=sig_u, corr_en=corr_en, corr_eu=corr_eu, corr_nu=corr_nu)
+    aligned1 = enz(station_name=station_name, dates=dates, yyyy_yyyy=yyyy_yyyy, MJD=MJD, week=week, day=day, reflon=reflon, e0=e0, east=east, n0=n0, north=north, u0=u0, up=up, ant=ant, sig_e=sig_e, sig_n=sig_n, sig_u=sig_u, corr_en=corr_en, corr_eu=corr_eu, corr_nu=corr_nu)
 
-
-    # Repeat for second station
-
+    # ----------------- Repeat for second station -----------------
     # Initialize empty arrays for aligned data
     station_name = []; dates = []; yyyy_yyyy = []; MJD = []; week = []; day = []; reflon = []; e0 = []; east = []; n0 = []; north = []; u0 = []; up = []; ant = []; sig_e = []; sig_n = []; sig_u = []; corr_en = []; corr_eu = []; corr_nu = []
 
@@ -418,6 +431,7 @@ def calcBaseline(station1, station2, start, end):
                 # Add all the data to the new tuple
                 # print('Adding data for ' + clipped2.dates[j2].strftime('%Y%m%d') + ' to [' + str(i) + '] ')
 
+                dates[i] = clipped2.dates[j2]
                 yyyy_yyyy[i] = clipped2.yyyy_yyyy[j2]
                 MJD[i] = clipped2.MJD[j2]
                 week[i] = clipped2.week[j2]
@@ -455,6 +469,7 @@ def calcBaseline(station1, station2, start, end):
             # print(station_name[i] + ' has no data on ' + days_in_ts[i].strftime('%Y%m%d'))
 
         if j2 == len(clipped2.dates):
+                dates[i] = np.nan
                 yyyy_yyyy[i] = np.nan
                 MJD[i] = np.nan
                 week[i] = np.nan
@@ -477,40 +492,48 @@ def calcBaseline(station1, station2, start, end):
         # Start search for next date after last matched date
         j2 = save_j2
 
-    aligned2 = enz(station_name=station_name, dates=days_in_ts, yyyy_yyyy=yyyy_yyyy, MJD=MJD, week=week, day=day, reflon=reflon, e0=e0, east=east, n0=n0, north=north, u0=u0, up=up, ant=ant, sig_e=sig_e, sig_n=sig_n, sig_u=sig_u, corr_en=corr_en, corr_eu=corr_eu, corr_nu=corr_nu)
+    aligned2 = enz(station_name=station_name, dates=dates, yyyy_yyyy=yyyy_yyyy, MJD=MJD, week=week, day=day, reflon=reflon, e0=e0, east=east, n0=n0, north=north, u0=u0, up=up, ant=ant, sig_e=sig_e, sig_n=sig_n, sig_u=sig_u, corr_en=corr_en, corr_eu=corr_eu, corr_nu=corr_nu)
 
     # Compute baseline lengths for given period.
     baselineData = []
     for i in range(len(days_in_ts)):
         # if aligned1.yyyy_yyyy[i] != np.nan and aligned2.yyyy_yyyy[i] != np.nan:
-        baselineData.append(np.sqrt((aligned1.north[i] - aligned2.north[i])**2 + (aligned1.east[i] - aligned2.east[i])**2  + (aligned1.up[i] - aligned2.up[i])**2))
-        print(aligned1.station_name[i] + '-' + aligned2.station_name[i] + ' baseline length: ' + str(baselineData[-1]) + ' m')
+        baselineData.append(np.sqrt((aligned1.north[i] - aligned2.north[i])**2 + (aligned1.east[i] - aligned2.east[i])**2 + (aligned1.up[i] - aligned2.up[i])**2))
+        # print(aligned1.station_name[i] + '-' + aligned2.station_name[i] + ' baseline length: ' + str(baselineData[-1]) + ' m')
 
     # Calculate the change in station baseline during the observation period. First, find the first data point
-    initialDist = np.nan;
+    initialDist = 0;
     i = 0;
 
-    while initialDist == np.nan:
+    while initialDist == 0:
         if baselineData[i] != np.nan:
             initialDist = baselineData[i]
         else:
             i += 1
 
+    print('Initial baseline length: ' + str(initialDist) + ' m')
+
     # Create new list for incremental baseline length changes
-    lengthChange = []
+    baselineDates = []
+    baselineChange = []
+
     for i in range(len(days_in_ts)):
-        lengthChange.append(baselineData[i] - initialDist)
-        # print('Change in ' + print(aligned1.station_name[i] + '-' + aligned2.station_name[i] + ' baseline length from ' + days_in_ts[i].strftime('%Y%m%d') + ' to ' + days_in_ts[i + 1].strftime('%Y%m%d') + ': ' + str(lengthChange[-1]) + ' m')
-        # print(days_in_ts[i + 1].strftime('%Y%m%d')))
 
-    baselineDates = days_in_ts
+        # If there is a length value, add to new lists
+        if baselineData != np.nan:
+            baselineDates.append(days_in_ts[i])
+            baselineChange.append(baselineData[i] - initialDist)
+            # print('Change in ' + aligned1.station_name[i] + '-' + aligned2.station_name[i] + ' baseline length from ' + days_in_ts[0].strftime('%Y%m%d') + ' to ' + days_in_ts[i].strftime('%Y%m%d') + ': ' + str(lengthChange[-1]) + ' m')
 
-    return baselineDates, lengthChange
+
+    return baselineDates, baselineChange
+
 
 # ------------------------- OUTPUT -------------------------
+
 def proj2LOS(gps_data, theta):
 
-    gps_los = []
+    gps_los=[]
 
     for gps_z in gps_data:
         gps_los.append(gps_z * np.sin(theta * np.pi / 180))
@@ -523,32 +546,32 @@ def proj2LOS(gps_data, theta):
 def stationTimeSeries(dates, gps_data, component, start_end):
 
     # Get displacements
-    plot_displacements = []
+    plot_displacements=[]
 
     # First find start date
-    z_init = 999
-    search_date = start_end[0]
+    z_init=999
+    search_date=start_end[0]
 
     while z_init == 999:
         print('Looking for ' + search_date.strftime('%Y-%m-%d'))
         for i in range(len(dates)):
             if search_date.strftime('%Y%m%d') == dates[i].strftime('%Y%m%d'):
-                plot_dates = dates[i:]
+                plot_dates=dates[i:]
                 print('GPS time series start: ' + str(plot_dates[0]))
-                plot_data = gps_data[i:]
-                z_init = gps_data[i]
+                plot_data=gps_data[i:]
+                z_init=gps_data[i]
                 break
 
-        search_date = search_date + dt.timedelta(days=1)
+        search_date=search_date + dt.timedelta(days=1)
 
-    search_date = search_date - dt.timedelta(days=1)
+    search_date=search_date - dt.timedelta(days=1)
     print("Initial value: " + str(z_init))
 
     for value in plot_data:
         plot_displacements.append(value - z_init)
 
-    fig = plt.figure(figsize=(14, 8))
-    ax1 = plt.subplot(111)
+    fig=plt.figure(figsize=(14, 8))
+    ax1=plt.subplot(111)
     plt.grid()
     ax1.scatter(plot_dates, plot_displacements, marker='.', zorder=99)
 
@@ -562,21 +585,22 @@ def stationTimeSeries(dates, gps_data, component, start_end):
     plt.show()
 
 
-def plotBaseline(baselineDates, lengthChange):
-
+def plotBaseline(baselineDates, baselineChange, fileName):
 
     fig = plt.figure(figsize=(14, 8))
     ax1 = plt.subplot(111)
     plt.grid()
-    ax1.plot(baselineDates, lengthChange, marker='.', zorder=99)
-    ax1.set_aspect(30)
+    ax1.scatter(baselineDates, baselineChange, marker='.', zorder=99)
+    # ax1.set_aspect(30)
     ax1.set_xlim(baselineDates[0], baselineDates[-1])
-    ax1.set_ylim(min(lengthChange) - 0.0005, max(lengthChange) + 0.0005)
+    ax1.set_ylim(min(baselineChange) - 0.0005, max(baselineChange) + 0.0005)
 
     plt.xlabel('Date')
     plt.ylabel('Baseline length change (m)')
 
     plt.show()
+    # plt.savefig(fileName + '.eps')
+    # plt.close()
 
 if __name__ == "__main__":
     driver()
