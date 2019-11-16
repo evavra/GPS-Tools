@@ -3,51 +3,73 @@ import collections
 import datetime as dt
 import matplotlib.pyplot as plt
 from getUNR import readStationList
+import math
 
 
 def driver():
-    # filename = 'RDOM.IGS08.tenv3.txt'
-    # data_format = 'env'
-    # component = 'N'
-    # start = '20141108'
-    # end = '20190901'
-    # theta = 31
-
-    # start_end = [dt.datetime.strptime(start, '%Y%m%d'), dt.datetime.strptime(end, '%Y%m%d')]
-    # gps_data = readUNR(filename, data_format)
-    # los_gps_data = proj2LOS(gps_data.up, theta)
-    # stationTimeSeries(gps_data.dates, los_gps_data, component, start_end)
-
-    # CALCULATE ONE BASELINE
-    # Load data
-    station1 = readUNR('GPS_data_20190829/RDOM.NA12.tenv3', 'env')
-    station2 = readUNR('GPS_data_20190829/CA99.NA12.tenv3', 'env')
-
-    start = '20141101'
-    end = '20190803'
-
-    outDir = 'BaselinePlots'
-
-    # Compute baseline time series
-    baselineDates, baselineChange = calcBaseline(station1, station2, start, end)
-    fileName = outDir + '/' + station1.station_name[0] + '-' + station2.station_name[0]
-    plotBaseline(baselineDates, baselineChange, fileName)
-
-
-    # CALCULATE MANY BASELINES
-
-    # Input:
-    ref = 'env'
-    stations = '/Users/ellisvavra/Desktop/Thesis/S1_Processing/InSAR_GPS/station.list'
-    dataDir = 'GPS_data_20190829'
-    suffix = '.NA12.tenv3'
-    outDir = 'BaselinePlots'
-
-    # Get list of GPS stations
-    stationList = readStationList(stations)
+    station()
 
 
 # ------------------------- CONFIGURE -------------------------
+
+def station():
+    filename = '/Users/ellisvavra/Thesis/gps/GPS_data_20190904/RDOM.NA12.tenv3'
+    data_format = 'env'
+    component = 'V'
+    start = '20141101'
+    end = '20190901'
+    theta = 31
+
+    start_end = [dt.datetime.strptime(start, '%Y%m%d'), dt.datetime.strptime(end, '%Y%m%d')]
+    gps_data = readUNR(filename, data_format)
+    stationTimeSeries(gps_data.dates, gps_data.up, component, start_end)
+
+
+    plt.xlabel('Date')
+    plt.ylabel('Vertical displacement (m)')
+
+    plt.show()
+
+
+def baseline():
+    # CALCULATE ONE BASELINE
+    # Load data
+    station1 = readUNR('/Users/ellisvavra/Thesis/gps/GPS_data_20190904/RDOM.NA12.tenv3', 'env')
+    # station2 = readUNR('GPS_data_20190904/P636.NA12.tenv3', 'env')
+    station2 = readUNR('/Users/ellisvavra/Thesis/gps/GPS_data_20190904/CA99.NA12.tenv3', 'env')
+
+    start = '20141108'
+    end = '20190801'
+
+    component = 'up'
+    outDir = 'BaselinePlots'
+
+    # Compute baseline time series
+    baselineDates, baselineChange = calcBaseline(station1, station2, start, end, component)
+    fileName = outDir + '/' + station1.station_name[0] + '-' + station2.station_name[0]
+    plotBaseline(baselineDates, baselineChange, fileName, component)
+
+
+def baselineMean():
+    # SMOOTH BASELINE WITH MOVING WINDOW MEAN
+    # Load data
+    station1 = readUNR('/Users/ellisvavra/Thesis/gps/GPS_data_20190904/RDOM.NA12.tenv3', 'env')
+    # station2 = readUNR('GPS_data_20190904/P636.NA12.tenv3', 'env')
+    station2 = readUNR('/Users/ellisvavra/Thesis/gps/GPS_data_20190904/CA99.NA12.tenv3', 'env')
+
+    start = '20141108'
+    end = '20190801'
+
+    component = 'up'
+    outDir = 'BaselinePlots'
+
+    # Compute baseline time series
+    baselineDates, baselineChange = calcBaseline(station1, station2, start, end, component)
+    fileName = outDir + '/' + station1.station_name[0] + '-' + station2.station_name[0]
+
+
+
+# ------------------------- READ -------------------------
 
 def readUNR(filename, data_format):
 
@@ -126,7 +148,7 @@ def readUNR(filename, data_format):
 
 # ------------------------- ANALYSIS -------------------------
 
-def calcBaseline(station1, station2, start, end):
+def calcBaseline(station1, station2, start, end, component):
     # ------------------------- DESCRIPTION: -------------------------
     # Calculates daily baseline lenghts and length changes between two input
     # GPS stations over given epoch using x, y, and z components. This function
@@ -457,16 +479,11 @@ def calcBaseline(station1, station2, start, end):
                 # Move to next data point
                 j2 += 1
 
-                # print(up[:i])
-
                 break
 
             elif days_in_ts[i].strftime('%Y%m%d') != clipped2.dates[j2].strftime('%Y%m%d'):
-                # print('Checking next data point')
                 j2 += 1
 
-        # if up[i] == []:
-            # print(station_name[i] + ' has no data on ' + days_in_ts[i].strftime('%Y%m%d'))
 
         if j2 == len(clipped2.dates):
                 dates[i] = np.nan
@@ -494,39 +511,88 @@ def calcBaseline(station1, station2, start, end):
 
     aligned2 = enz(station_name=station_name, dates=dates, yyyy_yyyy=yyyy_yyyy, MJD=MJD, week=week, day=day, reflon=reflon, e0=e0, east=east, n0=n0, north=north, u0=u0, up=up, ant=ant, sig_e=sig_e, sig_n=sig_n, sig_u=sig_u, corr_en=corr_en, corr_eu=corr_eu, corr_nu=corr_nu)
 
-    # Compute baseline lengths for given period.
-    baselineData = []
-    for i in range(len(days_in_ts)):
-        # if aligned1.yyyy_yyyy[i] != np.nan and aligned2.yyyy_yyyy[i] != np.nan:
-        baselineData.append(np.sqrt((aligned1.north[i] - aligned2.north[i])**2 + (aligned1.east[i] - aligned2.east[i])**2 + (aligned1.up[i] - aligned2.up[i])**2))
-        # print(aligned1.station_name[i] + '-' + aligned2.station_name[i] + ' baseline length: ' + str(baselineData[-1]) + ' m')
 
-    # Calculate the change in station baseline during the observation period. First, find the first data point
-    initialDist = 0;
+    # Calculate the change in GPS station displacement during the observation period. First, find the first data point
+    initialDispE1 = np.nan;
+    initialDispE2 = np.nan;    
+    initialDispN1 = np.nan;
+    initialDispN2 = np.nan;    
+    initialDispV1 = np.nan;
+    initialDispV2 = np.nan;
     i = 0;
 
-    while initialDist == 0:
-        if baselineData[i] != np.nan:
-            initialDist = baselineData[i]
+    while math.isnan(initialDispE1):
+        # Start from first day in time series. If tested time series date has data, set this to be the reference (position = 0).
+        if math.isnan(aligned1.east[i]) == False:
+            initialDispE1 = aligned1.east[i]
+            initialDispN1 = aligned1.north[i]
+            initialDispV1 = aligned1.up[i]
         else:
             i += 1
 
-    print('Initial baseline length: ' + str(initialDist) + ' m')
+    # Reset for second station
+    i = 0;
+    while math.isnan(initialDispE2):
+        # Start from first day in time series. If tested time series date has data, set this to be the reference (position = 0).
+        if math.isnan(aligned2.east[i]) == False:
+            initialDispE2 = aligned2.east[i]
+            initialDispN2 = aligned2.north[i]
+            initialDispV2 = aligned2.up[i]
+        else:
+            i += 1
 
-    # Create new list for incremental baseline length changes
+
+    print('Intial displacements for ' + aligned1.station_name[i] + ': ' + str(initialDispE1) + ', ' + str(initialDispN1) + ', ' + str(initialDispV1))
+    print('Intial displacements for ' + aligned2.station_name[i] + ': ' + str(initialDispE2) + ', ' + str(initialDispN2) + ', ' + str(initialDispV2))
+
+
+    # Create new list for incremental GPS displacements
     baselineDates = []
-    baselineChange = []
+    dispE1 = []
+    dispE2 = []
+    dispN1 = []
+    dispN2 = []
+    dispV1 = []
+    dispV2 = []
 
+    # Subtract initial displacement values for each 
     for i in range(len(days_in_ts)):
-
-        # If there is a length value, add to new lists
-        if baselineData != np.nan:
+        # If there is GPS data for both stations on a given date, subtract the initial displacement value and append date and net displacement to new lists
+        if math.isnan(aligned1.east[i]) == False and math.isnan(aligned2.east[i]) == False:
             baselineDates.append(days_in_ts[i])
-            baselineChange.append(baselineData[i] - initialDist)
-            # print('Change in ' + aligned1.station_name[i] + '-' + aligned2.station_name[i] + ' baseline length from ' + days_in_ts[0].strftime('%Y%m%d') + ' to ' + days_in_ts[i].strftime('%Y%m%d') + ': ' + str(lengthChange[-1]) + ' m')
+            dispE1.append(aligned1.east[i] - initialDispE1)
+            dispE2.append(aligned2.east[i] - initialDispE2)
+            dispN1.append(aligned1.north[i] - initialDispN1)
+            dispN2.append(aligned2.north[i] - initialDispN2)
+            dispV1.append(aligned1.up[i] - initialDispV1)
+            dispV2.append(aligned2.up[i] - initialDispV2)
 
+            # print('Change in ' + aligned1.station_name[i] + '-' + aligned2.station_name[i] + ' baseline length from ' + days_in_ts[0].strftime('%Y%m%d') + ' to ' + days_in_ts[i].strftime('%Y%m%d') + ': ' + str(baselineChange[-1]) + ' m')
+
+
+    # Compute baseline lengths for given period.
+    baselineChange = []
+    for i in range(len(baselineDates)):
+        if component == 'true':
+            baselineChange.append(np.sqrt((dispE1[i] - dispE2[i])**2 + (dispN1[i] - dispN2[i])**2 + (dispV1[i] - dispV2[i])**2))
+
+        elif component == 'east':
+            baselineChange.append(dispE1[i] - dispE2[i])
+
+        elif component == 'north':
+            baselineChange.append(dispN1[i] - dispN2[i])
+
+        elif component == 'up':
+            baselineChange.append(dispV1[i] - dispV2[i])
+
+            print(dispV1[i], dispV2[i], baselineChange[-1])
 
     return baselineDates, baselineChange
+
+
+def windowMean(baselineData, windowSize):
+    smoothedData = []
+
 
 
 # ------------------------- OUTPUT -------------------------
@@ -570,22 +636,22 @@ def stationTimeSeries(dates, gps_data, component, start_end):
     for value in plot_data:
         plot_displacements.append(value - z_init)
 
-    fig=plt.figure(figsize=(14, 8))
+    # fig=plt.figure(figsize=(14, 8))
     ax1=plt.subplot(111)
     plt.grid()
     ax1.scatter(plot_dates, plot_displacements, marker='.', zorder=99)
 
     # ax1.set_aspect(30)
     ax1.set_xlim(start_end[0], start_end[1])
-    ax1.set_ylim(min(plot_displacements) - 0.005, max(plot_displacements) + 0.005)
+    # ax1.set_ylim(min(plot_displacements) - 0.005, max(plot_displacements) + 0.005)
 
-    plt.xlabel('Date')
-    plt.ylabel('Vertical displacement (m)')
+    # plt.xlabel('Date')
+    # plt.ylabel('Vertical displacement (m)')
 
-    plt.show()
+    # plt.show()
 
 
-def plotBaseline(baselineDates, baselineChange, fileName):
+def plotBaseline(baselineDates, baselineChange, fileName, component):
 
     fig = plt.figure(figsize=(14, 8))
     ax1 = plt.subplot(111)
@@ -593,14 +659,20 @@ def plotBaseline(baselineDates, baselineChange, fileName):
     ax1.scatter(baselineDates, baselineChange, marker='.', zorder=99)
     # ax1.set_aspect(30)
     ax1.set_xlim(baselineDates[0], baselineDates[-1])
-    ax1.set_ylim(min(baselineChange) - 0.0005, max(baselineChange) + 0.0005)
-
+    # ax1.set_ylim(min(baselineChange) - 0.0005, max(baselineChange) + 0.0005)
+    plt.title(component)
     plt.xlabel('Date')
-    plt.ylabel('Baseline length change (m)')
+    plt.ylabel('Length change (m)')
 
     plt.show()
     # plt.savefig(fileName + '.eps')
     # plt.close()
 
+
+
+
+
 if __name__ == "__main__":
     driver()
+
+   
